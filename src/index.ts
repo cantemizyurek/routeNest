@@ -30,48 +30,64 @@ export function initExpress(defaultPath: string = '/api') {
 }
 
 function setTreeFromFolder(folderPath: string, branch: ApiTree) {
-  fs.readdirSync(folderPath).forEach(item => {
-    const itemPath = path.join(folderPath, item)
-    const itemStat = fs.statSync(itemPath)
+  try {
+    fs.readdirSync(folderPath).forEach(item => {
+      const itemPath = path.join(folderPath, item)
+      const itemStat = fs.statSync(itemPath)
 
-    if (itemStat.isDirectory()) {
-      addDirectoryToTree(item, itemPath, branch)
-    } else if (itemStat.isFile()) {
-      addFileToTree(item, itemPath, branch)
+      if (itemStat.isDirectory()) {
+        addDirectoryToTree(item, itemPath, branch)
+      } else if (itemStat.isFile()) {
+        addFileToTree(item, itemPath, branch)
+      }
+    })
+  } catch (error) {
+    console.error(`Error reading directory at ${folderPath}:`, error)
+  }
+}
+
+function addDirectoryToTree(name: string, dirPath: string, branch: ApiTree) {
+  try {
+    branch.children[name] = createApiTree()
+    setTreeFromFolder(dirPath, branch.children[name])
+  } catch (error) {
+    console.error(`Error adding directory to tree from ${dirPath}:`, error)
+  }
+}
+
+function addFileToTree(name: string, filePath: string, branch: ApiTree) {
+  try {
+    const handler = require(filePath).default as ApiHandler
+    const method = name.split('.')[0]
+
+    if (method.startsWith('_')) return
+
+    if (isHttpMethod(method)) {
+      branch.handlers[method] = handler
+    } else {
+      addMiddleware(method, handler, branch)
     }
-  })
-}
-
-function addDirectoryToTree(name: string, path: string, branch: ApiTree) {
-  branch.children[name] = createApiTree()
-  setTreeFromFolder(path, branch.children[name])
-}
-
-function addFileToTree(name: string, path: string, branch: ApiTree) {
-  const handler = require(path).default as ApiHandler
-  const method = name.split('.')[0]
-
-  if (method.startsWith('_')) return
-
-  if (isHttpMethod(method)) {
-    branch.handlers[method] = handler
-  } else {
-    addMiddleware(method, handler, branch)
+  } catch (error) {
+    console.error(`Error processing file at ${filePath}:`, error)
   }
 }
 
 function addMiddleware(name: string, middleware: ApiHandler, branch: ApiTree) {
-  const [id, ...nameParts] = name.split('-')
-  name = nameParts.join('-')
-  const desiredId = !isNaN(Number(id))
-    ? Number(id)
-    : branch.handlers.middlewares.length
+  try {
+    const [id, ...nameParts] = name.split('-')
+    name = nameParts.join('-')
+    const desiredId = !isNaN(Number(id))
+      ? Number(id)
+      : branch.handlers.middlewares.length
 
-  if (branch.handlers.middlewares[desiredId]) {
-    throw new Error(`Middleware with id ${desiredId} already exists`)
+    if (branch.handlers.middlewares[desiredId]) {
+      throw new Error(`Middleware with id ${desiredId} already exists`)
+    }
+
+    branch.handlers.middlewares[desiredId] = middleware
+  } catch (error) {
+    console.error(`Error adding middleware to tree:`, error)
   }
-
-  branch.handlers.middlewares[desiredId] = middleware
 }
 
 function isHttpMethod(method: string): method is HttpMethod {
