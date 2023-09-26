@@ -29,7 +29,7 @@ import routeNest from 'routenest'
   /users
     get.js
     post.js
-    /:id
+    /[id]
       get.js
       put.js
 ```
