@@ -22,7 +22,7 @@ const METHODS: HttpMethod[] = ['post', 'get', 'put', 'delete']
 
 export function initExpress(defaultPath: string = '/api') {
   const apiTree = createApiTree()
-  setTreeFromFolder(path.join(__dirname, defaultPath), apiTree)
+  setTreeFromFolder(path.join(process.cwd(), 'api'), apiTree)
 
   const app = express()
   setRouterFromTree(apiTree, app)
