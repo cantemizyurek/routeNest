@@ -1,0 +1,10 @@
+# Dependencies
+/node_modules
+
+# Production
+/dist
+
+# IDE
+.vscode
+.idea
+*.log
