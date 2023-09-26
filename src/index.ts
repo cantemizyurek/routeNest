@@ -61,10 +61,11 @@ function addFileToTree(name: string, path: string, branch: ApiTree) {
 }
 
 function addMiddleware(name: string, middleware: ApiHandler, branch: ApiTree) {
-  const middlewareId = branch.handlers.middlewares.length
-  const [id, ...nameParts] = name.slice(1).split('-')
+  const [id, ...nameParts] = name.split('-')
   name = nameParts.join('-')
-  const desiredId = !isNaN(Number(id)) ? Number(id) : middlewareId
+  const desiredId = !isNaN(Number(id))
+    ? Number(id)
+    : branch.handlers.middlewares.length
 
   if (branch.handlers.middlewares[desiredId]) {
     throw new Error(`Middleware with id ${desiredId} already exists`)
@@ -82,12 +83,16 @@ function setRouterFromTree(tree: ApiTree, router: express.Router, path = '') {
 
   METHODS.forEach(method => {
     if (handlers[method] !== undefined) {
-      router[method](path, ...handlers.middlewares, handlers[method]!)
+      router[method](
+        path,
+        ...handlers.middlewares.filter(m => m !== undefined),
+        handlers[method]!
+      )
     }
   })
 
   if (handlers.middlewares.length > 0) {
-    router.use(path, ...handlers.middlewares)
+    router.use(path, ...handlers.middlewares.filter(m => m !== undefined))
   }
 
   Object.entries(children).forEach(([child, childTree]) => {
