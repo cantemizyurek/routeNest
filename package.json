@@ -15,6 +15,10 @@
     "manager"
   ],
   "author": "cantemizyurek",
+  "repository": {
+    "url": "https://github.com/cantemizyurek/routeNest",
+    "type": "git"
+  },
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2"
