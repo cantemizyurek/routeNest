@@ -11,7 +11,9 @@ npm install routenest
 ## 🌟 Features
 
 📂 Automatic Express route generation based on directory structure.
+
 ⚙️ Supports middlewares and RESTful methods.
+
 🌲 Clean and organized route management using a tree structure.
 
 ## 📖 Usage
@@ -29,7 +31,7 @@ import routeNest from 'routenest'
   /users
     get.js
     post.js
-    /:id
+    /[id]
       get.js
       put.js
 ```

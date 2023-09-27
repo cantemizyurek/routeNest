@@ -22,7 +22,7 @@ const METHODS: HttpMethod[] = ['post', 'get', 'put', 'delete']
 
 export function initExpress(defaultPath: string = '/api') {
   const apiTree = createApiTree()
-  setTreeFromFolder(path.join(__dirname, defaultPath), apiTree)
+  setTreeFromFolder(path.join(process.cwd(), 'api'), apiTree)
 
   const app = express()
   setRouterFromTree(apiTree, app)
@@ -30,47 +30,64 @@ export function initExpress(defaultPath: string = '/api') {
 }
 
 function setTreeFromFolder(folderPath: string, branch: ApiTree) {
-  fs.readdirSync(folderPath).forEach(item => {
-    const itemPath = path.join(folderPath, item)
-    const itemStat = fs.statSync(itemPath)
+  try {
+    fs.readdirSync(folderPath).forEach(item => {
+      const itemPath = path.join(folderPath, item)
+      const itemStat = fs.statSync(itemPath)
 
-    if (itemStat.isDirectory()) {
-      addDirectoryToTree(item, itemPath, branch)
-    } else if (itemStat.isFile()) {
-      addFileToTree(item, itemPath, branch)
+      if (itemStat.isDirectory()) {
+        addDirectoryToTree(item, itemPath, branch)
+      } else if (itemStat.isFile()) {
+        addFileToTree(item, itemPath, branch)
+      }
+    })
+  } catch (error) {
+    console.error(`Error reading directory at ${folderPath}:`, error)
+  }
+}
+
+function addDirectoryToTree(name: string, dirPath: string, branch: ApiTree) {
+  try {
+    branch.children[name] = createApiTree()
+    setTreeFromFolder(dirPath, branch.children[name])
+  } catch (error) {
+    console.error(`Error adding directory to tree from ${dirPath}:`, error)
+  }
+}
+
+function addFileToTree(name: string, filePath: string, branch: ApiTree) {
+  try {
+    const handler = require(filePath).default as ApiHandler
+    const method = name.split('.')[0]
+
+    if (method.startsWith('_')) return
+
+    if (isHttpMethod(method)) {
+      branch.handlers[method] = handler
+    } else {
+      addMiddleware(method, handler, branch)
     }
-  })
-}
-
-function addDirectoryToTree(name: string, path: string, branch: ApiTree) {
-  branch.children[name] = createApiTree()
-  setTreeFromFolder(path, branch.children[name])
-}
-
-function addFileToTree(name: string, path: string, branch: ApiTree) {
-  const handler = require(path).default as ApiHandler
-  const method = name.split('.')[0]
-
-  if (method.startsWith('_')) return
-
-  if (isHttpMethod(method)) {
-    branch.handlers[method] = handler
-  } else {
-    addMiddleware(method, handler, branch)
+  } catch (error) {
+    console.error(`Error processing file at ${filePath}:`, error)
   }
 }
 
 function addMiddleware(name: string, middleware: ApiHandler, branch: ApiTree) {
-  const middlewareId = branch.handlers.middlewares.length
-  const [id, ...nameParts] = name.slice(1).split('-')
-  name = nameParts.join('-')
-  const desiredId = !isNaN(Number(id)) ? Number(id) : middlewareId
+  try {
+    const [id, ...nameParts] = name.split('-')
+    name = nameParts.join('-')
+    const desiredId = !isNaN(Number(id))
+      ? Number(id)
+      : branch.handlers.middlewares.length
 
-  if (branch.handlers.middlewares[desiredId]) {
-    throw new Error(`Middleware with id ${desiredId} already exists`)
+    if (branch.handlers.middlewares[desiredId]) {
+      throw new Error(`Middleware with id ${desiredId} already exists`)
+    }
+
+    branch.handlers.middlewares[desiredId] = middleware
+  } catch (error) {
+    console.error(`Error adding middleware to tree:`, error)
   }
-
-  branch.handlers.middlewares[desiredId] = middleware
 }
 
 function isHttpMethod(method: string): method is HttpMethod {
@@ -82,12 +99,16 @@ function setRouterFromTree(tree: ApiTree, router: express.Router, path = '') {
 
   METHODS.forEach(method => {
     if (handlers[method] !== undefined) {
-      router[method](path, ...handlers.middlewares, handlers[method]!)
+      router[method](
+        path,
+        ...handlers.middlewares.filter(m => m !== undefined),
+        handlers[method]!
+      )
     }
   })
 
   if (handlers.middlewares.length > 0) {
-    router.use(path, ...handlers.middlewares)
+    router.use(path, ...handlers.middlewares.filter(m => m !== undefined))
   }
 
   Object.entries(children).forEach(([child, childTree]) => {
