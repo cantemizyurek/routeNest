@@ -135,5 +135,8 @@ export default class StructureTree {
    */
   static readonly ERROR = 'error'
 
+  /**
+   * The `ROOT_PATH` constant.
+   */
   static ROOT_PATH = '/'
 }
