@@ -1,6 +1,5 @@
 import path from 'path'
-
-import { StructureLeaf, LeafType } from './StructureLeaf'
+import StructureLeaf, { LeafType } from './StructureLeaf'
 
 /**
  * Represents a tree structure that can contain child nodes of type `StructureTree` or `StructureLeaf`.
@@ -28,7 +27,7 @@ export default class StructureTree {
    */
   constructor(name: string, parentPath: string) {
     this.name = this.parseName(name)
-    this.path = path.join(parentPath, this.name)
+    this.path = parentPath + '/' + this.name
   }
 
   /**
@@ -62,6 +61,16 @@ export default class StructureTree {
       return child
     }
     return undefined
+  }
+
+  /**
+   * Returns an array of child subtrees.
+   * @returns An array of child subtrees.
+   */
+  getSubTrees() {
+    return [...this.children.values()].filter(
+      child => child instanceof StructureTree
+    ) as StructureTree[]
   }
 
   /**
@@ -125,4 +134,6 @@ export default class StructureTree {
    * The `ERROR` constant.
    */
   static readonly ERROR = 'error'
+
+  static ROOT_PATH = '/'
 }
