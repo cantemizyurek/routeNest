@@ -13,15 +13,32 @@ import StructureLeaf, {
 export default class StructureParser {
   readonly tree: StructureTree
   private folderPath: string
+  private customRequire: any
 
   /**
    * Creates a new instance of the StructureParser class.
    * @param folderPath The path of the folder to parse.
    * @param name The name of the folder.
    */
-  constructor(folderPath: string, name: string = '') {
-    this.tree = new StructureTree(name, '')
+  constructor(
+    folderPath: string,
+    {
+      name = '',
+      parentPath = '',
+      customRequire = require,
+    }: {
+      name?: string
+      parentPath?: string
+      customRequire?: any
+    } = {
+      name: '',
+      parentPath: '',
+      customRequire: require,
+    }
+  ) {
+    this.tree = new StructureTree(name, parentPath)
     this.folderPath = folderPath
+    this.customRequire = customRequire
   }
 
   /**
@@ -52,7 +69,11 @@ export default class StructureParser {
    * @param folderPath The path of the folder to parse.
    */
   private parseFolder(folderPath: string) {
-    const parser = new StructureParser(folderPath, this.parseName(folderPath))
+    const parser = new StructureParser(folderPath, {
+      name: this.parseName(folderPath),
+      parentPath: this.tree.path === '/' ? '' : this.tree.path,
+      customRequire: this.customRequire,
+    })
     parser.parse()
     this.tree.addChild(parser.tree)
   }
@@ -62,7 +83,7 @@ export default class StructureParser {
    * @param filePath The path of the file to parse.
    */
   private parseFile(filePath: string) {
-    const handler = require(filePath).default
+    const handler = this.customRequire(filePath).default
     const name = this.parseName(filePath)
 
     this.tree.addChild(this.createLeaf(name, handler))
